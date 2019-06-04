@@ -1,0 +1,113 @@
+﻿@{
+    ViewBag.Title = "display";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="style" type="text/css" href="Content/Style.css">
+    <style>
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body background="~/export-map-share.png" style="background-size:cover;background-attachment:fixed"  >
+    
+    <canvas id="PointsCanvas">
+        
+    </canvas>
+
+    <canvas id="LinesCanvas"></canvas>
+    
+
+
+    <script>
+
+        var canvasPoints = document.getElementById("PointsCanvas");
+        canvasPoints.width = window.innerWidth;
+        canvasPoints.height = window.innerHeight;
+        canvasPoints.style.position = "absolute";
+
+        var ctxPoints = canvasPoints.getContext('2d');
+
+        var canvasLines = document.getElementById("LinesCanvas");
+        canvasLines.width = window.innerWidth;
+        canvasLines.height = window.innerHeight;
+        canvasLines.style.position = "absolute";
+
+        var ctxLines = canvasLines.getContext('2d');
+
+        var prevLon;
+        var prevLat;
+        var firstPoint = true;
+        var index = 0;
+        var done = "false";
+
+        var m = @Session["mission"].ToString();
+        /*this function is calling a function of the controller to  get the position of the plane 
+        and drow it on the map */
+        myTimer = (function (ctxPoints, ctxLines) {
+
+            $.post("@Url.Action("GetPoint")").done(function (xml) {
+
+                var xmlDoc = $.parseXML(xml),
+                    $xml = $(xmlDoc);
+                var height = screen.height;
+                var width = screen.width;
+                lon = $xml.find("Lon").text();
+                //normalize the point 
+                lon = (parseInt(lon) + 180) * (width / 360);
+
+                var lat = $xml.find("Lat").text();
+                //normalize the point 
+                lat = (parseInt(lat) + 90) * (height / 180);
+
+                //if there are more points to draw
+                if (@Session["max"] != index) {
+                    ctxPoints.clearRect(0, 0, width, height);
+                    ctxPoints.beginPath();
+                    ctxPoints.arc(lon, lat, 8, 0, Math.PI * 2);
+                    ctxPoints.fillStyle = "red";
+                    ctxPoints.strokeStyle = "blue";
+                    ctxPoints.lineWidth = 3;
+                    ctxPoints.fill();
+                    ctxPoints.stroke();
+                    ctxPoints.closePath();
+
+                    if (firstPoint) {
+                        firstPoint = false;
+                    } else {
+                        //draw a line and move the point
+                        ctxLines.beginPath();
+                        ctxLines.moveTo(prevLon, prevLat);
+                        ctxLines.lineTo(lon, lat);
+                        ctxLines.strokeStyle = "red";
+                        ctxLines.stroke();
+                    }
+                    prevLon = lon;
+                    prevLat = lat;
+                    index = index + 1;
+                } else {
+                    //if all the points were displayed
+                    if (@Session["mission"].ToString() == "4" && done == "false") {
+                        alert("Done");
+                        done = "true";
+                    }
+                }
+
+
+                });
+        });
+      
+        if (@Session["mission"].ToString() != "1") {
+            setInterval(function () { myTimer(ctxPoints, ctxLines); }, 1000 / @Session["rate"]);
+        } else {
+            //first mission
+            myTimer(ctxPoints, ctxLines);
+        }
+    </script>
+</body>
+</html>
